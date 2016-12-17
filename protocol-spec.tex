@@ -10,36 +10,38 @@
 
 \section{Work in progress}
 
+This paper is incomplete, feel free to provide feedback via Github issues
+
 \tableofcontents
 
 \section{Abstract}
 
 The largest challenge in providing internet services to both already connected and emerging internet populations is the so called 'last mile`. With the explosion number and dramatic decrease in cost of connected devices ad-hoc networks and by extension mesh networks have looked increasingly attractive as solutions to connectivity problems.
 
-In this paper we explore the possibility of a for-profit mesh service for participation and use of the general population as a last-mile internet service provider with infrastructure created from a dynamic mix of of semi specialized consumer hardware and professional equipment inserted at key points.
+In this paper we explore the possibility of a for-profit mesh service for participation and use of the general population as a last-mile internet service provider with infrastructure created from a dynamic mix of of semi specialized consumer hardware and professional equipment inserted at key points. 
 
-\section{Feasibility of mesh networking as a primary ISP}
+\section{Feasibility of mesh networking as a primary ISP} 
 
     \subsection{Participation}
 
-    WiFi enabled devices are ubiquitous and often spend a significant amount of their active time idle, the potential of using a network of normal consumer devices to replace expensive, difficult to construct, and often monopolistic last mile infrastructure is enormous.
+    WiFi enabled devices are ubiquitous and often spend a significant amount of their active time idle, the potential of using a network of normal consumer devices to replace expensive, difficult to construct, and often monopolistic last mile infrastructure is enormous. 
 
-    The challenge is both motivation and enablement for the average consumer to participate in such a network. We propose a protocol in which a node will route data to an exit gateway and each node along this path will be paid at a rate of that nodes own choosing. In later sections we will examine the techniques for providing such a payment infrastructure, in this section we focus only on the feasibility of the network itself. Feasibility being defined as reasonable cost, connection speed, and complexity for a network base on mostly consumer hardware, with the possibility of professional hardware being profitable at network choke points being left open.
+    The challenge is both motivation and enablement for the average consumer to participate in such a network. We propose a protocol in which a node will route data to an exit gateway and each node along this path will be paid at a rate of that nodes own choosing. In later sections we will examine the techniques for providing such a payment infrastructure, in this section we focus only on the feasibility of the network itself. Feasibility being defined as reasonable cost, connection speed, and complexity for a network base on mostly consumer hardware, with the possibility of professional hardware being profitable at network choke points being left open. 
 
     \subsection{Network throughput}
-
-    Throughput in wireless mesh networks is limited both by packet loss and channel availability. While each individual node may be capable of several hundred megabits per second of wireless throughput actual throughput is cut in half immediately if the transmission must be rebroadcast on the same channel. Having two devices operating on different channels can mitigate this issue at the cost of compounding the problem of available channels.
-
+    
+    Throughput in wireless mesh networks is limited both by packet loss and channel availability. While each individual node may be capable of several hundred megabits per second of wireless throughput actual throughput is cut in half immediately if the transmission must be rebroadcast on the same channel. Having two devices operating on different channels can mitigate this issue at the cost of compounding the problem of available channels. 
+    
     \textbf{(TODO the below is very rough, missing citations and possibly misleading)}
-
-    There are three non-overlapping 2.4ghz WiFi channels available in the United States and 6ish channels with varying bandwidths available in the 5ghz spectrum. While other channels are available (most interestingly high power wireless A for rural users and 60ghz wireless AD for ultra dense urban environments) we will restrict ourselves to these bands as they are the most common. Many of the available 5ghz channels require DFS compliance to be used and are ignored by most consumer hardware. As this is a software issue more than a hardware one we will make an assumption in our favor there.
-
-    At 300mbps single direction maximum per 2.4ghz N channel and 800mbps single direction maximum per 5ghz AC channel. This is a grand total of 4.8Gbps per 5ghz signal range and 900Mbps per 2.4ghz signal range, in this case smaller signal ranges due to walls or other physical interference work both for and against the network. By isolating nodes total bandwidth available to each node increases, but the number of potential hops to reach an internet gateway increases.
-
-    Batman-Adv has a maximum of three retires for wireless interfaces in its ARQ scheme. (mix of worst case and best case estimates, maybe move everything to average case? Insufficient data for average case)
-
+    
+    There are three non-overlapping 2.4ghz WiFi channels available in the United States and 6ish channels with varying bandwidths available in the 5ghz spectrum. While other channels are available (most interestingly high power wireless A for rural users and 60ghz wireless AD for ultra dense urban environments) we will restrict ourselves to these bands as they are the most common. Many of the available 5ghz channels require DFS compliance to be used and are ignored by most consumer hardware. As this is a software issue more than a hardware one we will make an assumption in our favor there. 
+    
+    At 300mbps single direction maximum per 2.4ghz N channel and 800mbps single direction maximum per 5ghz AC channel. This is a grand total of 4.8Gbps per 5ghz signal range and 900Mbps per 2.4ghz signal range, in this case smaller signal ranges due to walls or other physical interference work both for and against the network. By isolating nodes total bandwidth available to each node increases, but the number of potential hops to reach an internet gateway increases. 
+    
+    Batman-Adv has a maximum of three retires for wireless interfaces in its ARQ scheme. (mix of worst case and best case estimates, maybe move everything to average case? Insufficient data for average case) 
+    
     \subsection{Network latency}
-
+    
     (determined by number of hops and network coding for batched packets, which might only apply to OGM's)
 
     \subsection{Cost of operation}
@@ -48,6 +50,8 @@ In this paper we explore the possibility of a for-profit mesh service for partic
 
 \section{Modifications to Batman-Adv protocol spec}
 
+	\subsection{Challenges to payment}
+
 	To understand this section you should be familiar with the BATMAN protocol in broad strokes \cite{batman}. It's a short and very accessible paper, please read it if you have not already.
 
 	While the BATMAN protocol has significant inherent overhead this is addressable through optimization \cite{catwoman, batroam} and it provides real world performance comparable to more conceptually complex protocols \cite{meshperf}. This allows for the addition of payment in a relatively straightforward manner.
@@ -55,33 +59,41 @@ In this paper we explore the possibility of a for-profit mesh service for partic
 	\subsection{Addition of cost criteria}
 
 		Specifically we propose a new field be added to BATMAN originator messages (henceforth refereed to as OGMs), this field is simply a half-precision floating point value for the cost of transmitting a pre-arranged number of packets in a single direction, an originator creating a new OGM for broadcast into the network would initialize this value to their 'hop cost'. A node rebroadcasting a received OGM would update this field by adding their own hop cost to the existing value before forwarding.
-	The process for selecting which OGM to retain and rebroadcast is likewise updated to account for the cost field. Instead of choosing the best OGM using the TQ field as the sole criteria the ratio of cost to TQ is chosen.
+
+	        The process for selecting which OGM to retain and rebroadcast is likewise updated to account for the cost field. Instead of choosing the best OGM using the TQ field as the sole criteria the ratio of cost to TQ is chosen.
+
+                Protocol overhead will be unbilled, this provides an unfortunate avenue for the use of stenography to encode free data. We propose a quick solution by limiting the frequency of overhead packet forwarding to the default issuing rate. In this way a malicious client could in theory reduce their broadcast rate to encode data for free, but in exchange said client would actually be reducing the overhead on the network rather than adding to it.
+
+                Furthermore, for the time being all bandwidth in either direction is paid for by the node initiating the connection, this is useful in that it simplifies the billing structure for the intended use of last mile consumer connectivity but is not, as far as we know, a requirement of the protocol design.
 
 	\subsection{Payment chains}
 
-        In real world conditions route changes in BATMAN and other mesh networks can occur very frequently, on the order of once every several seconds, while it is possible to reduce the amount of "route flipping" through careful protocol changes route flipping represents a fundamentally different challenge to mesh network with payment \cite{meshflip}.
+               The design of BATMAN, as well as any reasonably low overhead mesh protocol, specifically avoids requiring any node to have full knowledge of a route it is using, from the perspective of any given member of the mesh only the next hop and the cost required to reach the destination are known. To negotiate with each node along any given route to figure out who to compensate for routing packets is not only unsupported by BATMAN but is impossible to do efficiently. Mesh nodes would spend a significant amount of time and funds paying intermediate nodes to forward negotiation packets to every link in the route until a connection was finally open. To make a bad situation worse, real world testing shows that in worse case scenarios routes can flip as freqently as once every several seconds \cite{meshflip}. While protocol modifications can improve this alarming figure the fact remains that we must abstract payment into the same recursive concept used by the rest of BATMAN routing.
+
+               We propose a trivial solution to this problem and derive later facets of the protocol in such a way as to address the most grievous shortcomings of the concept. For a given route a node wishing to initiate a connection will only negotiate payment with adjacent nodes, the full cost of delivering data to the destination will be paid to the first node in the route, which will take it's share and pay the second node on until the payment reaches it's destination. Of course this method is fraught with potential for abuse that we will attempt to address.
 
 	\subsection{Microdebt and trust}
 
+               In designing the payment process we must balance between the potential that the bandwidth buyer will not be serviced, the potential that the bandwidth seller may not be paid, and the efficiency and functionality of the network as whole. With this in mind one of the most concerning possibilities is a malicious node advertising routes that it can not achieve, this would not only bandwidth buyers but would also break routing throughout the whole network, as an advertisement of an impossibly cheap, impossibly high TQ connection to every other node would quickly evolve into a packet black hole.
 
-	\subsection{Protocol changes}
+               To offset this possibility all bandwidth must be bought on credit with a minimum repayment bandwidth such that some small but meaningful amount of data can be exchanged before settlement must occur. This way it is possible to determine if a bandwidth seller is lying before payment is exchanged deterring scam nodes from advertising impossible routes.
 
-	\subsection{Proof of correctness}
+               In order to reduce the overhead of payment for each node the repayment period may be extended as nodes build trust. Node that in order to verify this trust another field must be added to OGMs specifically a pubkey field that can be used to verify the identity of each node for trade. The threshold value of repayment must not exceed the sum of transaction fees for each lower threshold times the number of successful payment periods required to increase the threshold. In this way it is never profitable to break trust instead of continue to increase it.
+
+	\subsection{Edge cases}
+               Even the inattentive have probably noted the possibility of negative interactions between variable payment periods and even honest nodes paying forward lump sums to fund routes, depending on payment periods a bandwidth selling node may end up in debt instead of making a monotonically increasing profit from its services. In this section we attempt to enumerate cases and define behaviors that prevent bandwidth selling nodes from making losses, and random occurrences from causing network wide failure. We do not expect to prevent sufficiently motivated malicious behavior from affecting users but we hope to at least prevent isolated incidents from impeding the entire network.
 
 	    \subsubsection{Assuming no malicious nodes}
-
 	    \subsubsection{Assuming unorganized malicious nodes}
-
 	    \subsubsection{Assuming malicious collusion}
-
 
 \section{Payment models}
 
     \subsection{Cryptocurrency}
-
     \subsection{Semi centralized cryptocurrency}
-
     \subsection{Semi centralized traditional currency}
+
+\medskip
 
 
 \begin{thebibliography}{1}
@@ -109,6 +121,5 @@ Britton, Matthew, and Andrew Coyle.
 \textit{Performance analysis of the BATMAN wireless ad-hoc network routing protocol with mobility and directional antennas} Military Communications and Information Systems Conference (MilCIS), 2011. IEEE, 2011.
 
 \end{thebibliography}
->>>>>>> Added some citations
 
 \end{document}
