@@ -1,4 +1,4 @@
-\documentclass[11pt]{article}
+ \documentclass[11pt]{article}
 \usepackage[linktocpage=true]{hyperref}
 \usepackage[utf8]{inputenc}
 
@@ -32,7 +32,7 @@ In this paper we explore the possibility of a for-profit mesh service for partic
     
     Throughput in wireless mesh networks is limited both by packet loss and channel availability. While each individual node may be capable of several hundred megabits per second of wireless throughput actual throughput is cut in half immediately if the transmission must be rebroadcast on the same channel. Having two devices operating on different channels can mitigate this issue at the cost of compounding the problem of available channels. 
     
-    \textbf{(TODO the below is very rough, missing citations and possibly misleading)}
+    \textbf{(TODO the below is very rough, missing citations and possibly misleading, determine a good way to model a hybrid network with hard links put in at choke points due to profit incentive)}
     
     There are three non-overlapping 2.4ghz WiFi channels available in the United States and 6ish channels with varying bandwidths available in the 5ghz spectrum. While other channels are available (most interestingly high power wireless A for rural users and 60ghz wireless AD for ultra dense urban environments) we will restrict ourselves to these bands as they are the most common. Many of the available 5ghz channels require DFS compliance to be used and are ignored by most consumer hardware. As this is a software issue more than a hardware one we will make an assumption in our favor there. 
     
@@ -42,7 +42,7 @@ In this paper we explore the possibility of a for-profit mesh service for partic
     
     \subsection{Network latency}
     
-    (determined by number of hops and network coding for batched packets, which might only apply to OGM's)
+    (determined by number of hops and network coding for batched packets, which might only apply to originator message's)
 
     \subsection{Cost of operation}
 
@@ -58,9 +58,9 @@ In this paper we explore the possibility of a for-profit mesh service for partic
 
 	\subsection{Addition of cost criteria}
 
-		Specifically we propose a new field be added to BATMAN originator messages (henceforth refereed to as OGMs), this field is simply a half-precision floating point value for the cost of transmitting a pre-arranged number of packets in a single direction, an originator creating a new OGM for broadcast into the network would initialize this value to their 'hop cost'. A node rebroadcasting a received OGM would update this field by adding their own hop cost to the existing value before forwarding.
+		Specifically we propose a new field be added to BATMAN originator messages (henceforth refereed to as originator messages), this field is simply a half-precision floating point value for the cost of transmitting a pre-arranged number of packets in a single direction, an originator creating a new originator message for broadcast into the network would initialize this value to their 'hop cost'. A node rebroadcasting a received originator message would update this field by adding their own hop cost to the existing value before forwarding.
 
-	        The process for selecting which OGM to retain and rebroadcast is likewise updated to account for the cost field. Instead of choosing the best OGM using the TQ field as the sole criteria the ratio of cost to TQ is chosen.
+	        The process for selecting which originator message to retain and rebroadcast is likewise updated to account for the cost field. Instead of choosing the best originator message using the TQ field as the sole criteria the ratio of cost to TQ is chosen.
 
                 Protocol overhead will be unbilled, this provides an unfortunate avenue for the use of stenography to encode free data. We propose a quick solution by limiting the frequency of overhead packet forwarding to the default issuing rate. In this way a malicious client could in theory reduce their broadcast rate to encode data for free, but in exchange said client would actually be reducing the overhead on the network rather than adding to it.
 
@@ -78,7 +78,38 @@ In this paper we explore the possibility of a for-profit mesh service for partic
 
                To offset this possibility all bandwidth must be bought on credit with a minimum repayment bandwidth such that some small but meaningful amount of data can be exchanged before settlement must occur. This way it is possible to determine if a bandwidth seller is lying before payment is exchanged deterring scam nodes from advertising impossible routes.
 
-               In order to reduce the overhead of payment for each node the repayment period may be extended as nodes build trust. Node that in order to verify this trust another field must be added to OGMs specifically a pubkey field that can be used to verify the identity of each node for trade. The threshold value of repayment must not exceed the sum of transaction fees for each lower threshold times the number of successful payment periods required to increase the threshold. In this way it is never profitable to break trust instead of continue to increase it.
+               In order to reduce the overhead of payment for each node the repayment period may be extended as nodes build trust. Node that in order to verify this trust another field must be added to originator messages specifically a pubkey field that can be used to verify the identity of each node for trade. The threshold value of repayment must not exceed the sum of transaction fees for each lower threshold times the number of successful payment periods required to increase the threshold. In this way it is never profitable to break trust instead of continue to increase it.
+               
+    \subsection{Weak black-hole attack protection}
+    
+               As noted in the previous section we refer to nodes advertising false routes, this is just one subset of what is known as a block-hole attack. A malicious node can falsely advertise routes that it is unable to complete, grinding the network to a halt as traffic is directed into a 'black-hole' from which is does not escape. While we can easily prevent the aforementioned attack as well as many other scams by having all bandwidth purchased on credit we can not use this method to prevent a well connected node from attracting more than its share of traffic by fudging a better TQ on each originator message it passes.
+               
+               Since Hocnet is expected to use and encourage the use of Ethernet bridges, IR bridges, and other ad-hoc infrastructure it's possible for a node to have a near perfect TQ to another node at an arbitrary distance. Making it impossible for any given node to determine the validity of an originator message without direct communication with the originator.
+               
+               To resolve this problem using constant originator message space we propose the addition of time stamps in originator messages. The originator will place a signed time stamp into originator messages. After some predetermined period t a node forwarding an originator message will be required to sign the current TQ and route cost with its public key and attach this data to the originator message. This process will be repeated for each time period up to a small but arbitrary number of times m.
+               
+               originator messages found to be lacking these values after the prescribed time will be dropped. This allows any node receiving an originator message to verify that the route cost and TQ have decreased and increased respectively since the last checkpoint. The strength of the security this provides against malicious originator messages is inversely proportional to t, where a small enough time period will devolve into the same O(n) scheme discarded earlier in this section. 
+               
+               While this algorithm provides no strong guarantees we hope to tune it such that black hole attacks aren't effective on anything but very small subjects of the network. 
+    
+    \subsection{Clock synchronization bootstrapping}
+    
+               The above section requires a that all nodes maintain a synchronized clock. TODO describe method to bootstrap clock sync passively using observed neighbor originator message time stamps. TODO replace originator message number with time stamp?
+    
+    
+    \subsection{Key exchange bootstrapping}
+    
+               To prevent impersonation it's critical that two nodes sharing a MAC address but using a different pubkey can not exist. We propose a simple solution where any originator message using an identical MAC address to an existing originator message but a different key will simply be dropped by the receiving node. Combined with a reasonable policy for evicting old entries for nodes not seen on the order of hours should be sufficient. 
+               
+               TODO think more about possible attacks here
+    
+    \subsection{Potential optimizations using hash-chains}
+    
+               Asymmetric encryption is a costly operation, even though we only propose security features on network overhead packets and leave security of the actual traffic to the layer 3 protocol our current proposal involves message verification operations proportional to the network size every originator message period, even using RSA with small keysizes a node modest node will struggle as network size increases. As if to add insult to injury originator messages will be heard from any directions, so a node will receive the same originator message at least once from each of its neighbors. A well connected node in a large network could be required to perform thousands of key verification operations per second.
+               
+               Using one way hash-chains we can provide the same level of security with a much less costly cryptographic primitive. In a one way hash chain a node computes a random seed S where H(S) = V-n, from that point V-n-1 ... V-0 are computed using H(V-n+1) = V-n. Using this method a node generates an arbitrary but finite chain of length n. Data can be symmetrically signed or otherwise encrypted with V-i, which is then transmitted to the network. Some period of time later V-i-1 is revealed to the network and can be used to verify the authenticity of the earlier message. By maintaining a longer history a node can verify that a given series of messages must originate from the same sender.
+               
+               By embedding a chain V-n and V-i+1 in each originator message V-n can be used to to verify the previous originator message sent by that node, secured with V-i-1 and V-i+1 can be used to verify the originator message containing it once V-i+2 is released by the next originator message. When Vn is finally reached a new chain is generated and it's V-0 is placed in an originator message that is verified using S.           
 
 	\subsection{Edge cases}
                Even the inattentive have probably noted the possibility of negative interactions between variable payment periods and even honest nodes paying forward lump sums to fund routes, depending on payment periods a bandwidth selling node may end up in debt instead of making a monotonically increasing profit from its services. In this section we attempt to enumerate cases and define behaviors that prevent bandwidth selling nodes from making losses, and random occurrences from causing network wide failure. We do not expect to prevent sufficiently motivated malicious behavior from affecting users but we hope to at least prevent isolated incidents from impeding the entire network.
