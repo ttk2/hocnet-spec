@@ -1,6 +1,7 @@
  \documentclass[11pt]{article}
 \usepackage[linktocpage=true]{hyperref}
 \usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
 \usepackage{fixltx2e}
 
 \title{\textbf{Hocnet a payment based mesh network protocol built on Batman-Adv}}
@@ -59,31 +60,23 @@ In this paper we explore the possibility of a for-profit mesh service for partic
 
 	\subsection{Addition of cost criteria}
 
-		Specifically we propose a new field be added to BATMAN originator messages (henceforth refereed to as originator messages), this field is simply a half-precision floating point value for the cost of transmitting a pre-arranged number of packets in a single direction, an originator creating a new originator message for broadcast into the network would initialize this value to their 'hop cost'. A node rebroadcasting a received originator message would update this field by adding their own hop cost to the existing value before forwarding.
+		Specifically we propose a new field be added to BATMAN originator messages, this field is simply a half-precision floating point value for the cost of transmitting a pre-arranged number of packets in a single direction, an originator creating a new originator message for broadcast into the network would initialize this value to their 'hop cost'. A node rebroadcasting a received originator message would update this field by adding their own hop cost to the existing value before forwarding.
 
 	        The process for selecting which originator message to retain and rebroadcast is likewise updated to account for the cost field. Instead of choosing the best originator message using the TQ field as the sole criteria the ratio of cost to TQ is chosen.
 
                 Protocol overhead will be unbilled, this provides an unfortunate avenue for the use of stenography to encode free data. We propose a quick solution by limiting the frequency of overhead packet forwarding to the default issuing rate. In this way a malicious client could in theory reduce their broadcast rate to encode data for free, but in exchange said client would actually be reducing the overhead on the network rather than adding to it.
 
-                Furthermore, for the time being all bandwidth in either direction is paid for by the node initiating the connection, this is useful in that it simplifies the billing structure for the intended use of last mile consumer connectivity but is not, as far as we know, a requirement of the protocol design.
+                Furthermore, for the time being all bandwidth in either direction is paid for by the node initiating the connection, this is useful in that it simplifies the billing structure for the intended use of last mile consumer connectivity but is not a requirement of the protocol design.
 
-	\subsection{Payment chains}
+	\subsection{Payment chains} \label{paychains}
 
-               The design of BATMAN, as well as any reasonably low overhead mesh protocol, specifically avoids requiring any node to have full knowledge of a route it is using, from the perspective of any given member of the mesh only the next hop and the cost required to reach the destination are known. To negotiate with each node along any given route to figure out who to compensate for routing packets is not only unsupported by BATMAN but is impossible to do efficiently. Mesh nodes would spend a significant amount of time and funds paying intermediate nodes to forward negotiation packets to every link in the route until a connection was finally open. To make a bad situation worse, real world testing shows that in worse case scenarios routes can flip as freqently as once every several seconds \cite{meshflip}. While protocol modifications can improve this alarming figure the fact remains that we must abstract payment into the same recursive concept used by the rest of BATMAN routing.
+               The design of BATMAN, as well as any reasonably low overhead mesh protocol, specifically avoids requiring any node to have full knowledge of a route it is using, from the perspective of any given member of the mesh only the next hop and the cost required to reach the destination are known. To negotiate with each node along any given route to figure out who to compensate for routing packets is not only unsupported by BATMAN but is impossible to do efficiently. Mesh nodes would spend a significant amount of time and funds paying intermediate nodes to forward negotiation packets to every link in the route until a connection was finally open. To make a bad situation worse, real world testing shows that in worse case scenarios routes can flip as frequently as once every several seconds \cite{meshflip}. While protocol modifications can improve this alarming figure it's not realistic to expect good performance out of a protocol that requires negotiating with many nodes individually. Furthermore paying each node in a route individually raises the issue of very infrequent paths, as routes move due to network conditions it's entirely possible many nodes will owe funds to each other without the individual amounts ever exceeding the fees for issuing the transactions.
 
-               We propose a trivial solution to this problem and derive later facets of the protocol in such a way as to address the most grievous shortcomings of the concept. For a given route a node wishing to initiate a connection will only negotiate payment with adjacent nodes, the full cost of delivering data to the destination will be paid to the first node in the route, which will take it's share and pay the second node on until the payment reaches it's destination. Of course this method is fraught with potential for abuse that we will attempt to address.
+               The solution we propose involves having route prices advertised as 'lump sums', where the cost of the entire route is paid to the first node in that route and it's expected that each node will pay forward all except it's own share. Since nodes are much more likely to send significant amounts of traffic over each adjacent node as opposed to any given node in a network this should result in the vast majority of traffic being feasible to pay out even with a significant amount of route flipping. We will spend the next several sections exploring what guarantees and security we can provide before addressing payment in further detail in \ref{pay}
 
-	\subsection{Microdebt and trust}
-
-               In designing the payment process we must balance between the potential that the bandwidth buyer will not be serviced, the potential that the bandwidth seller may not be paid, and the efficiency and functionality of the network as whole. With this in mind one of the most concerning possibilities is a malicious node advertising routes that it can not achieve, this would not only bandwidth buyers but would also break routing throughout the whole network, as an advertisement of an impossibly cheap, impossibly high TQ connection to every other node would quickly evolve into a packet black hole.
-
-               To offset this possibility all bandwidth must be bought on credit with a minimum repayment bandwidth such that some small but meaningful amount of data can be exchanged before settlement must occur. This way it is possible to determine if a bandwidth seller is lying before payment is exchanged deterring scam nodes from advertising impossible routes.
-
-               In order to reduce the overhead of payment for each node the repayment period may be extended as nodes build trust. Node that in order to verify this trust another field must be added to originator messages specifically a pubkey field that can be used to verify the identity of each node for trade. The threshold value of repayment must not exceed the sum of transaction fees for each lower threshold times the number of successful payment periods required to increase the threshold. In this way it is never profitable to break trust instead of continue to increase it.
-               
-    \subsection{Weak black-hole attack protection}
+    \subsection{Weak black-hole attack protection} \label{blackhole}
     
-               As noted in the previous section we refer to nodes advertising false routes, this is just one subset of what is known as a block-hole attack. A malicious node can falsely advertise routes that it is unable to complete, grinding the network to a halt as traffic is directed into a 'black-hole' from which is does not escape. While we can easily prevent the aforementioned attack as well as many other scams by having all bandwidth purchased on credit we can not use this method to prevent a well connected node from attracting more than its share of traffic by fudging a better TQ on each originator message it passes.
+               As noted in the previous section we refer to nodes advertising false routes, this is just one subset of what is known as a block-hole attack. A malicious node can falsely advertise routes that it is unable to complete, grinding the network to a halt as traffic is directed into a 'black-hole' from which is does not escape \cite{routesec}. While we can easily prevent the aforementioned attack as well as many other scams by having all bandwidth purchased on credit we can not use this method to prevent a well connected node from attracting more than its share of traffic by fudging a better TQ on each originator message it passes.
                
                Since Hocnet is expected to use and encourage the use of Ethernet bridges, IR bridges, and other ad-hoc infrastructure it's possible for a node to have a near perfect TQ to another node at an arbitrary distance. Making it impossible for any given node to determine the validity of an originator message without direct communication with the originator.
                
@@ -129,33 +122,33 @@ In this paper we explore the possibility of a for-profit mesh service for partic
                      
                      \[H(V_{n-1}) == V_n\]
                      
-               Which proves that some valid version of the originator message from that node exists in the network, although it's possible that the received version has been modified in transit. To reduce this latency we propose that if nodes only see one version of a given originator message with a valid V\textsubscript{n} it should be accepted immediately but placed in a queue for verification.
+               Which proves that some valid version of the originator message from that node exists in the network, although it's possible that the received version has been modified in transit until verification is complete. To reduce this latency we propose that if nodes only see one version of a given originator message with a valid V\textsubscript{n} it should be accepted immediately but placed in a queue for verification \cite{spins,hash}.
+               
+               \subsubsection{Persistence of Trust}
+               
+                      While hash chains offer significantly better performance they do not provide an easy way to verify that you are speaking to the same node after instances of power loss or even intermittent connection loss. Resuming verification is possible after receiving more than one correct originator message but without a constant pubkey there is no way to verify that the identity of those node has not changed while the node was away. Since trust is an integral part of the billing system this means that we can not eliminate the need for asymmetric key cryptography entirely. 
+                      
+                      On the other hand, unless you have a billing relationship with a node trust is not affected, meaning pubkeys only need to be shared with adjacent nodes. Even better only one asymmetric key operation needs to be performed to verify that the owner of the pubkey is the owner of a given hash chain, after which all billing messages can be verified using only the current V\textsubscript{n} for any given node.
                
                \subsubsection{The large network problem}
                         
                         In a case where the longest path through the network is longer than the originator message period it's possible to perform a rather complex attack. An attacker would have a low latency connection across the diameter of the network, they would pick up originator messages at one end of the network, wait for the next message to reveal the key, then use that key to forge a false originator message and broadcast it before the original message reaches that point in the mesh. Victim nodes would be faced with two valid, conflicting originator messages.
                         
-                        A proposed solution is to use the checkpoints previously proposed in 4.5, when a node producing a checkpoint in an originator message produces their signature M\textsubscript{chk\textsubscript{n}} which is the n\textsuperscript{th} checkpoint signature.
+                        A proposed solution is to use the checkpoints previously proposed in \ref{blackhole}, when a node producing a checkpoint in an originator message produces their signature M\textsubscript{chk\textsubscript{n}} which is the n\textsuperscript{th} checkpoint signature.
                         
                         \[M_{chk_n} = H(V_{chk_n}||V_{chk_{n+1}}||Timestamp_{chk_n}...Price_{chk_n}||TQ_{chk_n})\]
                         
-                        By signing the original contents of the message as well as the checkpoint contents no additional space is used because the hash output is a fixed size, but it becomes possible to verify what version of each originator message each saw exactly, as opposed to only the price and TQ observed. Provided the checkpoint interval and maximum number of checkpoints remains properly tuned for the maximum network diameter controlled by the originator message TTL a checkpoint should exist on any far flung originator message either before the next key reveal or too shortly after to reliably attack. 
-                        
+                        By signing the original contents of the message as well as the checkpoint contents no additional space is used because the hash output is a fixed size, but it becomes possible to verify what version of each originator message each saw exactly, as opposed to only the price and TQ observed. Provided the checkpoint interval and maximum number of checkpoints remains properly tuned for the maximum network diameter controlled by the originator message TTL a checkpoint should exist on any far flung originator message either before the next key reveal or too shortly after to reliably attack.
+                                                
                \subsubsection{Dealing with attackers}
                
-                          Using asymmetric key cryptography it was feasible to simply drop originator messages that failed to validate, while it's still possible to drop obviously invalid originator messages, where the revealed V\textsubscript{n} does not match H(V\textsubscript{n-1}) various race condition attacks are possible. 
+                      Using asymmetric key cryptography it was feasible to simply drop originator messages that failed to validate, while it's still possible to drop obviously invalid originator messages where the revealed V\textsubscript{n} does not match H(V\textsubscript{n-1}) various race condition attacks are possible. 
                           
-                          A new verification queue, that only updates the routing table after verification for nodes with originator messages that failed to verify is possible, but opens up the possibility of using the solution as an attack in and of itself to delay updates about a specific node in the network. Since we assume ad-hoc infrastructure will make up the backbone of the network increased originator message periods are unlikely to re-route traffic, which would be the major motivation for such an attack. For the time being we leave this problem open.
+                      A new verification queue, that only updates the routing table after verification for nodes with originator messages that failed to verify is possible, but opens up the possibility of using the solution as an attack in and of itself to delay updates about a specific node in the network. Since we assume ad-hoc infrastructure will make up the backbone of the network increased originator message periods are unlikely to re-route traffic, which would be the major motivation for such an attack. For the time being we leave this problem open.
                 
+\section{Payment models} \label{pay}
 
-	\subsection{Edge cases}
-               Even the inattentive have probably noted the possibility of negative interactions between variable payment periods and even honest nodes paying forward lump sums to fund routes, depending on payment periods a bandwidth selling node may end up in debt instead of making a monotonically increasing profit from its services. In this section we attempt to enumerate cases and define behaviors that prevent bandwidth selling nodes from making losses, and random occurrences from causing network wide failure. We do not expect to prevent sufficiently motivated malicious behavior from affecting users but we hope to at least prevent isolated incidents from impeding the entire network.
-
-	    \subsubsection{Assuming no malicious nodes}
-	    \subsubsection{Assuming unorganized malicious nodes}
-	    \subsubsection{Assuming malicious collusion}
-
-\section{Payment models}
+    Payment negotiation at the mesh level was mentioned in \ref{paychains} without much detail beyond the method. This is an intentional chose to abstract as many of the details of billing as possible into a user-space program, in this way we can embed a payment negotiation protocol into Hocnet at a higher level instead of being forced to write it into the kernel itself. The billing program, preliminarily named Penguin (backronym to be determined), requires read only access to the routing table, the ability to send messages to adjacent nodes, and the ability to block routing to a given adjacent node by removing it from the routing table. 
 
     \subsection{Cryptocurrency}
     \subsection{Semi centralized cryptocurrency}
@@ -188,6 +181,24 @@ Murray, David, Michael Dixon, and Terry Koziniec.
 Britton, Matthew, and Andrew Coyle.
 \textit{Performance analysis of the BATMAN wireless ad-hoc network routing protocol with mobility and directional antennas} Military Communications and Information Systems Conference (MilCIS), 2011. IEEE, 2011.
 
+\bibitem{sead}
+Hu, Yih-Chun, David B. Johnson, and Adrian Perrig. 
+\textit{SEAD: Secure efficient distance vector routing for mobile wireless ad hoc networks} Ad hoc networks 1.1 (2003): 175-192.
+
+\bibitem{spins}
+Perrig, Adrian, et al. 
+\textit{SPINS: Security protocols for sensor networks} Wireless networks 8.5 (2002): 521-534.
+
+\bibitem{hash}
+Hu, Yih-Chun, Markus Jakobsson, and Adrian Perrig. 
+\textit{Efficient constructions for one-way hash chains} International Conference on Applied Cryptography and Network Security. Springer Berlin Heidelberg, 2005.
+
+\bibitem {routesec}
+Lundberg, Janne. 
+\textit{Routing security in ad hoc networks} Helsinki University of Technology, http://citeseer. nj. nec. com/400961. html (2000).
+
 \end{thebibliography}
 
+\bibliography{protocol-spec.bib}{}
+\bibliographystyle{plain}
 \end{document}
