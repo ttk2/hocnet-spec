@@ -1,6 +1,7 @@
  \documentclass[11pt]{article}
 \usepackage[linktocpage=true]{hyperref}
 \usepackage[utf8]{inputenc}
+\usepackage{fixltx2e}
 
 \title{\textbf{Hocnet a payment based mesh network protocol built on Batman-Adv}}
 \date{2016-12-10}
@@ -52,7 +53,7 @@ In this paper we explore the possibility of a for-profit mesh service for partic
 
 	\subsection{Challenges to payment}
 
-	To understand this section you should be familiar with the BATMAN protocol in broad strokes \cite{batman}. It's a short and very accessible paper, please read it if you have not already.
+	To understand this section you should be familiar with the BATMAN protocol in broad strokes \cite{batman}. It's a short and very accessible paper, please read it if you have not already. TODO create BATMAN protocol summary section.
 
 	While the BATMAN protocol has significant inherent overhead this is addressable through optimization \cite{catwoman, batroam} and it provides real world performance comparable to more conceptually complex protocols \cite{meshperf}. This allows for the addition of payment in a relatively straightforward manner.
 
@@ -105,11 +106,47 @@ In this paper we explore the possibility of a for-profit mesh service for partic
     
     \subsection{Potential optimizations using hash-chains}
     
-               Asymmetric encryption is a costly operation, even though we only propose security features on network overhead packets and leave security of the actual traffic to the layer 3 protocol our current proposal involves message verification operations proportional to the network size every originator message period, even using RSA with small keysizes a node modest node will struggle as network size increases. As if to add insult to injury originator messages will be heard from any directions, so a node will receive the same originator message at least once from each of its neighbors. A well connected node in a large network could be required to perform thousands of key verification operations per second.
+               Asymmetric encryption is a costly operation, even though we only propose security features on network overhead packets and leave security of the actual traffic to the layer 3 protocol our current proposal involves message verification operations proportional to the network size every originator message period, even using RSA with small keysizes a node modest node will struggle as network size increases.
                
-               Using one way hash-chains we can provide the same level of security with a much less costly cryptographic primitive. In a one way hash chain a node computes a random seed S where H(S) = V-n, from that point V-n-1 ... V-0 are computed using H(V-n+1) = V-n. Using this method a node generates an arbitrary but finite chain of length n. Data can be symmetrically signed or otherwise encrypted with V-i, which is then transmitted to the network. Some period of time later V-i-1 is revealed to the network and can be used to verify the authenticity of the earlier message. By maintaining a longer history a node can verify that a given series of messages must originate from the same sender.
+               Using one way hash-chains we can provide a similar level of security with a much less costly cryptographic primitive. In a one way hash chain a node chooses a random seed S and uses a secure hash function H to create a hash chain of length n. 
                
-               By embedding a chain V-n and V-i+1 in each originator message V-n can be used to to verify the previous originator message sent by that node, secured with V-i-1 and V-i+1 can be used to verify the originator message containing it once V-i+2 is released by the next originator message. When Vn is finally reached a new chain is generated and it's V-0 is placed in an originator message that is verified using S.           
+               \[H(S) = V_n\] 
+               
+               Where V\textsubscript{n} is the end of the chain. From that point V\textsubscript{n-1} ... V\textsubscript{0} are computed by.
+               
+               \[H(V_{n+1}) = V_n\] 
+               
+               Using this method a node generates an arbitrary but finite chain of length n. Data can be symmetrically signed or otherwise encrypted with V\textsubscript{i}, which is then transmitted to the network. Some period of time later V\textsubscript{i-1} is revealed to the network and can be used to verify the authenticity of the earlier message. By maintaining a longer history a node can verify that a given series of messages must originate from the same sender.
+               
+               By embedding a chain V\textsubscript{n} and V\textsubscript{i+1} in each originator message V\textsubscript{n} can be used to to verify the previous originator message sent by that node, secured with V\textsubscript{i-1} and V\textsubscript{i+1} can be used to verify the originator message containing it once V\textsubscript{i+2} is released by the next originator message. When V\textsubscript{n} is finally reached a new chain is generated and it's V\textsubscript{0} is placed in an originator message that is verified using S.      
+               
+               
+               In the name of additional efficiency we propose the use of the same secure hash function H for generating the message signatures. Where M\textsubscript{sig} represents the originator message signature and || represents binary append.
+               
+               \[M_{sig} = H(Timesamp||MAC||V_n||V_{n+1})\]
+               
+               Once V\textsubscript{n+1} has been revealed in the next originator message this signature can be computed and verified. By requiring the next originator message to verify the current one we effectively add a latency of one originator message period to all overhead operations if we are to verify the contents of each message before using them. It is possible that the contents of the message could be used initially and then discarded if the message fails verification, at the very least it can be confirmed that.
+                     
+                     \[H(V_{n-1}) == V_n\]
+                     
+               Which proves that some valid version of the originator message from that node exists in the network, although it's possible that the received version has been modified in transit. To reduce this latency we propose that if nodes only see one version of a given originator message with a valid V\textsubscript{n} it should be accepted immediately but placed in a queue for verification.
+               
+               \subsubsection{The large network problem}
+                        
+                        In a case where the longest path through the network is longer than the originator message period it's possible to perform a rather complex attack. An attacker would have a low latency connection across the diameter of the network, they would pick up originator messages at one end of the network, wait for the next message to reveal the key, then use that key to forge a false originator message and broadcast it before the original message reaches that point in the mesh. Victim nodes would be faced with two valid, conflicting originator messages.
+                        
+                        A proposed solution is to use the checkpoints previously proposed in 4.5, when a node producing a checkpoint in an originator message produces their signature M\textsubscript{chk\textsubscript{n}} which is the n\textsuperscript{th} checkpoint signature.
+                        
+                        \[M_{chk_n} = H(V_{chk_n}||V_{chk_{n+1}}||Timestamp_{chk_n}...Price_{chk_n}||TQ_{chk_n})\]
+                        
+                        By signing the original contents of the message as well as the checkpoint contents no additional space is used because the hash output is a fixed size, but it becomes possible to verify what version of each originator message each saw exactly, as opposed to only the price and TQ observed. Provided the checkpoint interval and maximum number of checkpoints remains properly tuned for the maximum network diameter controlled by the originator message TTL a checkpoint should exist on any far flung originator message either before the next key reveal or too shortly after to reliably attack. 
+                        
+               \subsubsection{Dealing with attackers}
+               
+                          Using asymmetric key cryptography it was feasible to simply drop originator messages that failed to validate, while it's still possible to drop obviously invalid originator messages, where the revealed V\textsubscript{n} does not match H(V\textsubscript{n-1}) various race condition attacks are possible. 
+                          
+                          A new verification queue, that only updates the routing table after verification for nodes with originator messages that failed to verify is possible, but opens up the possibility of using the solution as an attack in and of itself to delay updates about a specific node in the network. Since we assume ad-hoc infrastructure will make up the backbone of the network increased originator message periods are unlikely to re-route traffic, which would be the major motivation for such an attack. For the time being we leave this problem open.
+                
 
 	\subsection{Edge cases}
                Even the inattentive have probably noted the possibility of negative interactions between variable payment periods and even honest nodes paying forward lump sums to fund routes, depending on payment periods a bandwidth selling node may end up in debt instead of making a monotonically increasing profit from its services. In this section we attempt to enumerate cases and define behaviors that prevent bandwidth selling nodes from making losses, and random occurrences from causing network wide failure. We do not expect to prevent sufficiently motivated malicious behavior from affecting users but we hope to at least prevent isolated incidents from impeding the entire network.
