@@ -26,33 +26,6 @@ In this paper we propose a plethora of additions to the existing mesh network pr
 
 We hope that by lowering the barrier of entry to providing connectivity services we can both decrease the cost of connecting the developing world and provide an environment that fosters competition in otherwise monopolistic last mile infrastructure in developed countries.
 
-\section{Feasibility of mesh networking as a primary ISP} 
-
-    \subsection{Participation}
-
-    WiFi enabled devices are ubiquitous and often spend a significant amount of their active time idle, the potential of using a network of normal consumer devices to replace expensive, difficult to construct, and often monopolistic last mile infrastructure is enormous. 
-
-    The challenge is both motivation and enablement for the average consumer to participate in such a network. We propose a protocol in which a node will route data to an exit gateway and each node along this path will be paid at a rate of that nodes own choosing. In later sections we will examine the techniques for providing such a payment infrastructure, in this section we focus only on the feasibility of the network itself. Feasibility being defined as reasonable cost, connection speed, and complexity for a network base on mostly consumer hardware, with the possibility of professional hardware being profitable at network choke points being left open. 
-
-    \subsection{Network throughput}
-    
-    Throughput in wireless mesh networks is limited both by packet loss and channel availability. While each individual node may be capable of several hundred megabits per second of wireless throughput actual throughput is cut in half immediately if the transmission must be rebroadcast on the same channel. Having two devices operating on different channels can mitigate this issue at the cost of compounding the problem of available channels. 
-    
-    \textbf{(TODO the below is very rough, missing citations and possibly misleading, determine a good way to model a hybrid network with hard links put in at choke points due to profit incentive)}
-    
-    There are three non-overlapping 2.4ghz WiFi channels available in the United States and 6ish channels with varying bandwidths available in the 5ghz spectrum. While other channels are available (most interestingly high power wireless A for rural users and 60ghz wireless AD for ultra dense urban environments) we will restrict ourselves to these bands as they are the most common. Many of the available 5ghz channels require DFS compliance to be used and are ignored by most consumer hardware. As this is a software issue more than a hardware one we will make an assumption in our favor there. 
-    
-    At 300mbps single direction maximum per 2.4ghz N channel and 800mbps single direction maximum per 5ghz AC channel. This is a grand total of 4.8Gbps per 5ghz signal range and 900Mbps per 2.4ghz signal range, in this case smaller signal ranges due to walls or other physical interference work both for and against the network. By isolating nodes total bandwidth available to each node increases, but the number of potential hops to reach an internet gateway increases. 
-    
-    Batman-Adv has a maximum of three retires for wireless interfaces in its ARQ scheme. (mix of worst case and best case estimates, maybe move everything to average case? Insufficient data for average case) 
-    
-    \subsection{Network latency}
-    
-    (determined by number of hops and network coding for batched packets, which might only apply to originator message's)
-
-    \subsection{Cost of operation}
-
-    (power consumption of a node use to estimate floor price of a hop, this combined with avg number of hops to gateway estimate should determine floor price of bandwidth, should be cost feasible by a mile)
 
 \section{Modifications to Batman-Adv protocol spec}
 
