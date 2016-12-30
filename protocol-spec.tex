@@ -27,13 +27,18 @@ In this paper we propose a plethora of additions to the existing mesh network pr
 We hope that by lowering the barrier of entry to providing connectivity services we can both decrease the cost of connecting the developing world and provide an environment that fosters competition in otherwise monopolistic last mile infrastructure in developed countries.
 
 
+\section{Batman-Adv}
+
+    Batman-Adv is the layer 2 version of the original BATMAN protocol outlined in \cite{batman}. Conceptually the protocol is very simple. Every originator period every node participating in the network broadcasts an originator message containing a MAC address, which identifies the node that `originated` the message as well as the MAC address of the last node to forward it.  When an originator message is broadcast every node that receives the broadcast updates the transmission quality (TQ) field with it's own estimation of the link quality between itself and the node that sent the originator message. Note that the TQ field is not simply replaced by every hop, but is updated using several factors that boil down to a single field in the originator message for which 'higher is better' for more details see appendix A in \cite{batroam}.
+    
+    So as the originator messages spread through the network each node checks each originator message it receives against it's own local routing table, either to be added or updated if the TQ advertised by the recived originator message is better or the sequence number of the message is higher. Since originator messages contain the last hop to forward the message this data combined with TQ and sequence number is used to maintain an up to date routing table with the best first hop to any other node in the network.
+    
+    To send data to any other node it is sent to the best first hop, who forward that data in turn to it's own best first hop to the destination and so on until the data reaches it's destination node.
+    
+    Batman-Adv is implemented as an up-streamed Linux kernel module with several optimizations from the original concept, including network coding to batch the broadcast of originator messages and several optimizations focusing on allowing hybrid networks containing traditional Ethernet links as well as wireless links \cite{catwoman}. Perhaps the most promising feature of Batman-Adv is that is remains competitively performant when compared to other mesh protocols \cite{meshperf}
+
+
 \section{Modifications to Batman-Adv protocol spec}
-
-	\subsection{Challenges to payment}
-
-	To understand this section you should be familiar with the BATMAN protocol in broad strokes \cite{batman}. It's a short and very accessible paper, please read it if you have not already. TODO create BATMAN protocol summary section.
-
-	While the BATMAN protocol has significant inherent overhead this is addressable through optimization \cite{catwoman, batroam} and it provides real world performance comparable to more conceptually complex protocols \cite{meshperf}. This allows for the addition of payment in a relatively straightforward manner.
 
 	\subsection{Addition of cost criteria}
 
