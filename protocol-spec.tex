@@ -18,9 +18,13 @@ This paper is incomplete, feel free to provide feedback via Github issues
 
 \section{Abstract}
 
-The largest challenge in providing internet services to both already connected and emerging internet populations is the so called 'last mile`. With the explosion number and dramatic decrease in cost of connected devices ad-hoc networks and by extension mesh networks have looked increasingly attractive as solutions to connectivity problems.
+As the number of connected individuals and devices expands the `last mile` continues to be the greatest challenge both in the connected and developing worlds, representing a disproportional portion of the cost and difficulty of connecting the world.
 
-In this paper we explore the possibility of a for-profit mesh service for participation and use of the general population as a last-mile internet service provider with infrastructure created from a dynamic mix of of semi specialized consumer hardware and professional equipment inserted at key points. 
+Ad-Hoc networks are a type of network where there is no dedicated infrastructure such as switches or routers and instead these tasks are handled by the participating users in a distributed fashion. Mesh networks are a derivative of Ad-Hoc networks in that dedicated hardware for routing is used and encouraged but not ultimately required for the functionality of the network. 
+
+In this paper we propose a plethora of additions to the existing mesh network protocol Batman-Adv with the purpose of creating a 'decentralized last mile' where each node competes to be paid to carry traffic via the most efficient route it can use. Furthermore we will encourage the use of so called `Ad-Hoc infrastructure` where users may implement dedicated hardware such as directional antennas, IR links, or simply mundane wires to produce better and more profitable routes for their nodes to advertise.
+
+We hope that by lowering the barrier of entry to providing connectivity services we can both decrease the cost of connecting the developing world and provide an environment that fosters competition in otherwise monopolistic last mile infrastructure in developed countries.
 
 \section{Feasibility of mesh networking as a primary ISP} 
 
@@ -148,9 +152,14 @@ In this paper we explore the possibility of a for-profit mesh service for partic
                 
 \section{Payment models} \label{pay}
 
-    Payment negotiation at the mesh level was mentioned in \ref{paychains} without much detail beyond the method. This is an intentional chose to abstract as many of the details of billing as possible into a user-space program, in this way we can embed a payment negotiation protocol into Hocnet at a higher level instead of being forced to write it into the kernel itself. The billing program, preliminarily named Penguin (backronym to be determined), requires read only access to the routing table, the ability to send messages to adjacent nodes, and the ability to block routing to a given adjacent node by removing it from the routing table. 
+    Payment negotiation at the mesh level was mentioned in \ref{paychains} without much detail beyond the method. This is an intentional chose to abstract as many of the details of billing as possible into a user-space program, in this way we can embed a payment negotiation protocol into Hocnet at a higher level instead of being forced to write it into the kernel itself. The billing program, preliminarily named Penguin (backronym to be determined), requires read only access to the routing table, the ability to send messages to adjacent nodes, and the ability to block routing to a given adjacent node.
+    
+    During the initial key exchange a number of billing codes can be encoded in the message, advertising what methods of payment any given node can accept. It's then up to the node initiating traffic to either find a mutually acceptable payment method of blacklist the node. Billing info messages will have a hash signature as well as a symmetric one, allowing for easy verification although not easy generation. In the worst case a well connected node with many neighbours that has not yet built any trust may have to perform a large number of asymmetric key operations until trust has been established and the period of billing messages can increase.
 
     \subsection{Cryptocurrency}
+    
+          TODO read about lightning network
+    
     \subsection{Semi centralized cryptocurrency}
     \subsection{Semi centralized traditional currency}
 
@@ -199,6 +208,4 @@ Lundberg, Janne.
 
 \end{thebibliography}
 
-\bibliography{protocol-spec.bib}{}
-\bibliographystyle{plain}
 \end{document}
