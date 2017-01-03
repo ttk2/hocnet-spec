@@ -86,7 +86,7 @@ We hope that by lowering the barrier of entry to providing connectivity services
                
                Therefore it's safe to trust the keys included in originator messages for routing purposes. At the routing levels originator messages and ack messages are both signed and must be verified when received to prevent the forwarding of incorrect information.  
                    
-    \subsection{Optimizations using hash-chains} \label{crypto}
+    \subsection{Potential optimizations using hash-chains} \label{crypto}
     
                Asymmetric encryption is a costly operation, even though we only propose security features on network overhead packets and leave security of the actual traffic to the layer 3 protocol our current proposal involves message verification operations proportional to the network size every originator message period, even using RSA with small keysizes a modest node node will struggle as network size increases.
                
@@ -134,6 +134,15 @@ We hope that by lowering the barrier of entry to providing connectivity services
                       Using asymmetric key cryptography it was feasible to simply drop originator messages that failed to validate, while it's still possible to drop obviously invalid originator messages where the revealed V\textsubscript{n} does not match H(V\textsubscript{n-1}) various race condition attacks are possible. 
                           
                       A new verification queue, that only updates the routing table after verification for nodes with originator messages that failed to verify is possible, but opens up the possibility of using the solution as an attack in and of itself to delay updates about a specific node in the network. Since we assume ad-hoc infrastructure will make up the backbone of the network increased originator message periods are unlikely to re-route traffic, which would be the major motivation for such an attack. For the time being we leave this problem open.
+                      
+                      
+\section {Potential packet security using symmetric cryptography}
+
+    Idea, modify DH key exchange such that we embed components into originator messages in a rotating fashion, we get a key exchange at O(1) cost to ogm size and o(n) total network load instead of o(n(n-1)/2) to allow everyone to perform a key exchange with everyone.
+                
+                Ok got it, you have a public component, a private component, you exchange the public + private component, which is then mixed with each individuals private component again to form the shared secret. So we place the common (hardcoded or rotates on a clock) component plus the secret component into the OGM's then we complete the process when we want to send symmetric traffic to that node and encrypt the data with that key.
+                
+                TODO determine if this is novel, flesh it out. 
                 
 \section{Payment models} \label{pay}
 
