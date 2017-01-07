@@ -5,7 +5,7 @@
 \usepackage{fixltx2e}
 
 \title{\textbf{Cryptographic threat model for Hocnet}}
-\date{2016-12-10}
+\date{2017-01-07}
 \begin{document}
 \maketitle
 
@@ -36,6 +36,8 @@ In an ideal world there would be some way to ensure that routing cost monotonica
 \section{Performance Constraints}
 
 Since the actual mesh is pretty light on CPU resources we can dedicate most of our processing to encryption, think 60\% of a fast cell phone processor, memory is a bit tighter since we have to maintain a routing table of every node, so small keys are important think no more than 1GB ram for the routing table which minus crypto is a MAC address, transmission quality value (single precision FP), and gateway info. So 16 bytes per node without crypto, we need the routing table to be big enough for "the last mile", hard to define goal there without more research. 
+
+On the network traffic side overhead needs to be as low as is feasible, even at the cost of upgraded processor, ram, or dedicated hardware. 
 
 
 \end{document}
