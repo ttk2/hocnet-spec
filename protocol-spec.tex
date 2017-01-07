@@ -74,7 +74,20 @@ We hope that by lowering the barrier of entry to providing connectivity services
                
                We can address pure malicious intent at the billing level. To function the billing level must be able to determine which adjacent nodes can be communicated with, by separating the ability to block originator messages from the ability to block all traffic the billing code can allow an adjacent node to buy bandwidth without ever routing any of it's own traffic over it. Different trust levels can be required for selling to a node and buying from a node, these values can initially be the same but when a malicious route is found, specifically a route where the node fails to observe an ack after the given period and some tolerance, the node participant in the malicious route can be marked as 'sell only' on a timer and the minimum trust threshold for 'sell/buy' relationships increased. Note that it's possible the node participant in the malicious route is still above the sell/buy threshold for trust. The goal of these measures is that for nodes far away from the malicious node these values will slowly trend back to normal as ack period pass without any malicious routes found, but the area of the network with the attacker will see another malicious route immediately once the timer expires, resulting in the timer being instituted again with exponential backoff for that node. Since the minimum sell/buy trust has also been increased if the malicious node where to reconnect under a new identity it would find it impossible to start the attack again without building trust. For stationary attackers this would quickly become infeasible, for mobile attackers the entire network threshold continues to increase, this isn't ideal as it provides a way to create a barrier to entry for new routes but we prioritize network functionality over fairness.
                
-               The single remaining case is where a malicious node advertises better TQ than it can achieve but does actually forward the packets as promised. Since actual TQ can be determined through ack packets and the values in the rebroadcasted originator messages for that route are updated as a matter of course with actual values the route will quickly normalize to the actual transmission quality. As a added bonus the throughput of a connection can be added as a criteria for TQ when ack packets are available allowing nodes to increase or decrease the TQ based on measured bandwidth which can't be inferred from packet loss of normal broadcast traffic. 
+               The single remaining case is where a malicious node advertises better TQ than it can achieve but does actually forward the packets as promised. Since actual TQ can be determined through ack packets and the values in the rebroadcasted originator messages for that route are updated as a matter of course with actual values the route will quickly normalize to the actual transmission quality. As a added bonus the throughput of a connection can be added as a criteria for TQ when ack packets are available allowing nodes to increase or decrease the TQ based on measured bandwidth which can't be inferred from packet loss of normal broadcast traffic.
+               
+               
+    \subsection{Cryptography requirements}
+    
+                To get the above to work the following conditions must be met. 
+                
+                \begin{itemize}
+                \item Private Communication with adjacent nodes for billing with strong protection against MITM and persistent identity. 
+                \item Verifiable communication with all nodes in the network, this operation must be computationally light both to perform and especially to verify. No persistence of identity is required, ignore MITM considerations (we assume all nodes have more than one route into the network). Required for both overhead packet and unicast transmission integrity.
+                \item Network integrity must remain against a small number of disjoint attackers (see above)
+                \item Sybil attacks to overwhelm nodes with crypto operations must be at the very least expensive. 
+                \item Optional, provide encryption for actual payload data. 
+                \end{itemize}
                
     \subsection{Key exchange bootstrapping}
     
@@ -148,7 +161,7 @@ We hope that by lowering the barrier of entry to providing connectivity services
 
     The billing program, preliminarily named Penguin (backronym to be determined), requires read only access to the routing table, the ability to send messages to adjacent nodes, and the ability to block originator messages, traffic or both from adjacent nodes.
     
-    During the initial key exchange a number of billing codes can be encoded in the message, advertising what methods of payment any given node can accept. It's then up to the node initiating traffic to either find a mutually acceptable payment method of blacklist the node. Billing info messages will have a hash signature as well as a symmetric one, allowing for easy verification although not easy generation. In the worst case a well connected node with many neighbours that has not yet built any trust may have to perform a large number of asymmetric key operations until trust has been established and the period of billing messages can increase.
+    During the initial key exchange a number of billing codes can be encoded in the message, advertising what methods of payment any given node can accept. It's then up to the node initiating traffic to either find a mutually acceptable payment method of blacklist the node. Billing info messages will have a hash signature as well as a symmetric one, allowing for easy verification although not easy generation. In the worst case a well connected node with many neighbors that has not yet built any trust may have to perform a large number of asymmetric key operations until trust has been established and the period of billing messages can increase.
 
     \subsection{Cryptocurrency}
     
