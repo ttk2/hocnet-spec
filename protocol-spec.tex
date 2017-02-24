@@ -1,4 +1,4 @@
- \documentclass[11pt]{article}
+\documentclass[11pt]{article}
 \usepackage[linktocpage=true]{hyperref}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -40,66 +40,29 @@ We hope that by lowering the barrier of entry to providing connectivity services
 
 \section{Modifications to Batman-Adv protocol spec}
 
-	\subsection{Addition of cost criteria} \label{cost}
-
-		Specifically we propose a new field be added to Batman-Adv originator messages, this field is simply a half-precision floating point value for the cost of transmitting a pre-arranged number of packets in a single direction, an originator creating a new originator message for broadcast into the network would initialize this value to their 'hop cost'. A node rebroadcasting a received originator message would update this field by adding their own hop cost to the existing value before forwarding.
-
-	        The process for selecting which originator message to retain and rebroadcast is likewise updated to account for the cost field. Instead of choosing the best originator message using the throughput field alone the ratio of cost to TQ is chosen.
-
-                Broadcast based protocol overhead, such as originator messages, will be unbilled, this provides an unfortunate avenue for the use of stenography to encode free data. We propose a quick solution by limiting the frequency of overhead packet forwarding to the default issuing rate. In this way a malicious client could in theory reduce their broadcast rate to encode data for free, but in exchange said client would actually be reducing the overhead on the network rather than adding to it.
-
-
-	\subsection{Payment chains} \label{paychains}
-
-               The design of Batman-Adv, as well as any reasonably low overhead mesh protocol, specifically avoids requiring any node to have full knowledge of a route it is using. From the perspective of any given member of the mesh only the next hop and the cost required to reach the destination are known. To negotiate with each node along any given route to figure out who to compensate for routing packets is not only unsupported by Batman-Adv but is impossible to do efficiently. Mesh nodes would spend a significant amount of time and funds paying intermediate nodes to forward negotiation packets to every link in the route until a connection was finally open. To make a bad situation worse, real world testing shows that in worse case scenarios routes can flip as frequently as once every several seconds \cite{meshflip}. While protocol modifications can improve this alarming figure it's not realistic to stop and renegotiate paths until a billing relationship is established with every node any given route may traverse. Furthermore paying each node in a route individually raises the issue of very infrequent paths, as routes move due to network conditions it's entirely possible many nodes will owe funds to each other in such small quantities as to be infeasible to transfer without the protocol overhead or transaction fees negating the benefit.
-               
-               As noted in section \ref{cost} each node adds their own price on top of the existing one as they forward originator messages, from the perspective of any given node the only known cost is the cost of the entire route being advertised by that originator message. A node that wants send traffic would select the best route from the originator messages it has seen and pay the first node in that path the full cost of the route. Each node would then be expected to take off their advertised share and pay forward. 
-               
-               This obviously introduces a level of trust that must be balanced on the other side of the seller/buyer relationship, if the bandwidth buyer parts with their funds and has only reduced trust to threaten a seller that does not deliver the relationship imbalance and transitory nature of each nodes identity makes a situation ripe for exploration.
-               
-               To counterbalance the risk of a zero trust node attempting to take the money and run all bandwidth will be purchased on credit. With payment to be delivered at some future time if services are in fact rendered. In the zero trust version of this relationship the seller must deliver a connection, at least for a very brief period, before demanding payment from the buyer. As trust is built the payment interval and the size of the credit can be increased and the threat of reducing trust becomes more significant as the efficiencies of delaying billing increase.
-               
-              Perhaps the greatest advantage of this method is the ability to separate routing and billing as components of the network. From the perspective of the routing code cost is just a criteria to optimize and trust does not exist, from the perspective of the billing code only knowledge of and communication with adjacent nodes is a concern.
-
-               This separation allows billing to operate as a user level program while routing code operates the kernel level with only a few hooks in between to facilitate cooperation. Most of the following sections addresses routing level requirements, billing is more fully specified in section \ref{pay}.
-
     \subsection{Weak black-hole attack protection} \label{blackhole}
-    
-               With the addition of profit incentive a so called 'black-hole' attack becomes very appealing to potential attackers. A malicious node can falsely advertise routes that it is unable or unwilling to complete, or can complete but only in a worse fashion than advertised \cite{routesec}. 
-               
-               For our purposes we will define a black-hole attack as any node which increases the throughput metric or decreases the price on any originator message it receives and rebroadcasts.
+    			For our purposes we will define a black-hole attack as any node which increases the throughput metric or decreases the price on any originator message it receives and rebroadcasts.
 
-               When a connection is opened every fixed number of packets received, or some fixed time interval whichever is shorter, a node must produce a signed ack, this message will contain a timestamp, the bandwidth metric to the destination node, and a bit to indicate if the ack was sent via the timer or packet number trigger. If for some reason this ack is not delivered in a reasonable amount of time a node initiating a connection can assume it's packets are not arriving at the destination and that some node along the path is dropping packets.
-               
-               While this information is useful it is not necessarily delivered to the nodes that need to have it. It is entirely possible for a duplex connection to not share any nodes between the send and receive paths. In this case we need to prove to the nodes attempting to send packets to a destination that their route to that destination does actually exist. To do this we will forward ack messages in a circular fashion, when a node sends an ack message it will chose the last received ack from the other end of the connection and append it to it's own ack before sending. This way any node that is part of the routing loop receives data about both sides of the connection it is participating in.
-               
-               This comes together to provide enough information for the network at large to take action against false routing metrics, with the minimum billing interval set to one ack period a node attempting to advertise routes and simply drop packets will never be paid because each node participating in the connection will note the lack of an ack message and discontinue the connection without billing.
-               
-               If the originator message period is set to some fraction of the ack message period the network should converge onto a new route faster than the ack period requires. Meaning a missing ack heavily implies malicious behavior or large scale network failure, for a nodes participant in multiple connections with the same destination (as neighbor nodes to the malicious node likely are) can easily observe with near certainty that no acks are being produced from specific routes and blacklist the involved neighbor for those routes for some random period.
-               
-               If the same behavior is noticed again after the blacklist period an exponential random back off can be used, the reasoning for this is that nodes adjacent to malicious nodes are likely to continue to see the same behavior when their timers expire, while further away nodes have a lower chance of doing so. This slowly isolates the blacklisting until it converges on the guilty node.
-               
-               The same method can be used when it's observed that the throughput metric is higher or the price is lower in the ack than in the originator message a node is forwarding as it can be inferred that some node along the route to the destination must be malicious.
-               
-               In conjunction with blacklisting nodes the minimum trust to forward traffic over a new neighbor can be raised such that a blacklisted neighbor can not return under a new identity to perform the attack again quickly.
-               
-               Provided tests demonstrate that the convergence period for this strategy is feasible it should provide robust protection against stationary attackers. Mobile attackers will eventually run into raised trust levels required to route traffic over new neighbors across the entire network. The major downside of this method of security is that hostile networks create hostile communities trust wise, where it is difficult to build enough trust with neighbor nodes to participate in the network rather than simply buy bandwidth from it.
-               
-               
-\section{Payment models} \label{pay}
+               When a connection between two nodes across the network is opened, both nodes regularly produce a signed "ack" message. This ack message contains:
 
-    [todo scrooge paper?]
+              \begin{itemize}
+                \item A timestamp.
+                \item How much data has been recieved from the other node.
+              \end{itemize}
 
-    The billing program, preliminarily named Scrooge (backronym to be determined), requires read only access to the routing table, the ability to send messages to adjacent nodes, and the ability to block originator messages, traffic or both from adjacent nodes.
-    
-    During the initial key exchange a number of billing codes can be encoded in the message, advertising what methods of payment any given node can accept. It's then up to the node initiating traffic to either find a mutually acceptable payment method of blacklist the node. Billing info messages will have a hash signature as well as a symmetric one, allowing for easy verification although not easy generation. In the worst case a well connected node with many neighbors that has not yet built any trust may have to perform a large number of asymmetric key operations until trust has been established and the period of billing messages can increase.
+				When each side of the connection receives the ack message, they compare the information about how much data was received with their records of how much data was sent. From this, they can estimate the throughput of their route to the other node. Other measures are also possible. If the ack message contains the number of packets received, they can estimate the packet loss rate by comparing this with the number of packets they sent.
 
-    \subsection{Cryptocurrency}
-    
-          TODO read about lightning network
-    
-    \subsection{Semi centralized cryptocurrency}
-    \subsection{Semi centralized traditional currency}
+				They then forward the ack on along the route. Other nodes along the route can use the ack message to make the same estimate. They compare the traffic they have forwarded from the source to the traffic that the destination says it received from the source.
+
+				This way, all the nodes on the route can make an estimate about the true quality of the route.
+
+				This provides enough information for the network at large to take action against false routing metrics. Each node participating in an active connection will be able to estimate an accurate quality metric to at least one of the ends of the connection, once every ack period.
+
+				At the very least, this lets nodes build up accurate information on routes they are using. If a route's true quality is less than other available routes to that destination, another route will be switched to within one ack period.
+
+				Blacklisting could also be an option. If a neighbor is consistently advertising innacurate quality metrics, something is wrong. There could be a wide range of blacklisting policies, and a lot of details involved in tweaking them.
+
+				Another technique could be to allow nodes to build up trust with their neighbors, and select routes from trusted neighbors more often. Unknown nodes would not recieve much traffic until they demonstrated the accuracy of their routes. This might act to mitigate "sybil" attacks where nodes quickly assume new identities.
 
 \medskip
 
