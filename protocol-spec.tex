@@ -35,7 +35,7 @@ We hope that by lowering the barrier of entry to providing connectivity services
     
     To send data to any other node it is sent to the neighbor node listed in the local routing table, who will forward that data in turn based on it's own copy of the routing table. This process continues until the data is delivered to its destination.
     
-    Batman-Adv is implemented as an up-streamed Linux kernel module with several optimizations from the original concept, including network coding to batch the broadcast of originator messages and several optimizations focusing on allowing hybrid networks containing traditional Ethernet links as well as wireless links \cite{catwoman}. Perhaps the most promising feature of Batman-Adv is that is remains competitively performant when compared to other mesh protocols \cite{meshperf}
+    Batman-Adv is implemented as an up-stream Linux kernel module with several optimizations from the original concept, including network coding to batch the broadcast of originator messages and several optimizations focusing on allowing hybrid networks containing traditional Ethernet links as well as wireless links \cite{catwoman}. Perhaps the most promising feature of Batman-Adv is that is remains competitively performant when compared to other mesh protocols \cite{meshperf}
 
 
 \section{Modifications to Batman-Adv protocol spec}
@@ -47,22 +47,29 @@ We hope that by lowering the barrier of entry to providing connectivity services
 
               \begin{itemize}
                 \item A timestamp.
-                \item How much data has been recieved from the other node.
+                \item How much data has been received from the other node.
               \end{itemize}
 
 				When each side of the connection receives the ack message, they compare the information about how much data was received with their records of how much data was sent. From this, they can estimate the throughput of their route to the other node. Other measures are also possible. If the ack message contains the number of packets received, they can estimate the packet loss rate by comparing this with the number of packets they sent.
 
 				They then forward the ack on along the route. Other nodes along the route can use the ack message to make the same estimate. They compare the traffic they have forwarded from the source to the traffic that the destination says it received from the source.
 
-				This way, all the nodes on the route can make an estimate about the true quality of the route.
+				This way, all the nodes participant in a connection for at least one full ack period can make an estimate about the true quality of the route.
 
 				This provides enough information for the network at large to take action against false routing metrics. Each node participating in an active connection will be able to estimate an accurate quality metric to at least one of the ends of the connection, once every ack period.
 
-				At the very least, this lets nodes build up accurate information on routes they are using. If a route's true quality is less than other available routes to that destination, another route will be switched to within one ack period.
-
-				Blacklisting could also be an option. If a neighbor is consistently advertising innacurate quality metrics, something is wrong. There could be a wide range of blacklisting policies, and a lot of details involved in tweaking them.
-
-				Another technique could be to allow nodes to build up trust with their neighbors, and select routes from trusted neighbors more often. Unknown nodes would not recieve much traffic until they demonstrated the accuracy of their routes. This might act to mitigate "sybil" attacks where nodes quickly assume new identities.
+				This method suffers from being a passive throughput metric rather than an active one. Passive metrics may not fully show the throughput of a connection, but active metrics require additionally protocol overhead and run into the challenge of hiding the fact that they are a throughput test to prevent malicious nodes from prioritizing them and giving an inaccurate picture of the routes true throughput. 
+				
+				Since we can not confirm if a node is lying or simply has a flawed method to estimate it's own link bandwidth the ack metric should be used to adjust the advertised throughput of a given route not for blacklisting or forms of the network attempting to pushing malicious nodes. Any node that sees an applicable ack will adjust the advertised throughput for that route in it's own originator messages meaning large swaths of the network will begin to participate in throughput correction in a single ack period and most nodes will be able to participate in several simultaneous throughput corrections without additional overhead beyond the packet counters required for the first correction.
+				
+				Nodes not participating in a correction simply update the metrics they receive with their own throughput and rebroadcast the network as a whole will converge to the true throughput of a given connection, hopefully within no more than a few ack periods. The largest remaining question is for how long to continue to apply the adjusted metric after acks are no longer received. In the case of a malicious node advertising routes it will not complete, throughput will quickly correct to zero and that route will stop being advertised, only for the ack's to expire and the process to repeat. 
+				
+				In order to mitigate this an exponentially increasing time-out will be used for bandwidth corrections beyond a small tolerance. A node that has participated in a correction will record the time it was last performing a correction for a given route $T_{last}$ and the size of the correction $\delta$. When participating in another correction on the same route the amount of time to apply the bandwidth correction after the ack has expired will be determined as. 
+				\newline
+				$T_{adjustment} = \frac{C_1}{T_{now} - T_{last}}^{C_2\delta}$
+				\newline
+				
+				Where $C_1$ and  $C_2$ are constants to be adjusted and hardcoded. The goal of this formula is to provide a longer adjustment time based on nodes stopping quickly returning to adjusting the same route and further increased by the magnitude of the route adjustment since these characteristics fit the expected profile of a malicious node that can't provide any actual use to the network.
 
 \medskip
 
