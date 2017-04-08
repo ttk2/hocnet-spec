@@ -9,29 +9,29 @@
 \begin{document}
 \maketitle
 
+\section{Goal}
+
+This paper is designed to provide a concise summary of the security requirements and goals of the Hocnet protocol.
+
 \section{Application}
 
-Public mesh network where each node is paid for the bandwidth they forward. Participants can be anyone with a WiFi device. Some nodes may employ dedicated hardware like directional antennas, IR bridges, or self run wires in an attempt to provide the fastest lowest cost route to a gateway (a node selling access into the internet). 
+A public mesh network where each node is paid for the bandwidth they forward. Participants can be anyone with a WiFi device. Some nodes may employ dedicated hardware like directional antennas, IR bridges, or self run wires in an attempt to provide the fastest lowest cost route to a gateway (a node selling access into the internet). 
 
-From the perspective of users and applications the mesh will act like layer 2 switch although with significantly more happening behind the scenes. 
+From the perspective of users and applications the mesh will act like layer 2 switch, software running in user land will not be able to distinguish the connection from some more mundane form of networking. 
 
-Nodes have no chance to pre-exchange data and have either a normal consume router or medium tier networking equipment depending on how much effort they put into providing a good route.
+Hardware ranges from consumer grade hardware all the way up to corporate grade hardware depending on the user and how much traffic they which to route. 
 
 \section{Threat model}
 
-An attacker will be able to modify packets, advertise false routes, man in the middle a connection, flood the network with fake nodes in an attempt to either capture more traffic (and thus profit), or control some fraction of the network. Lets assume less than 10\% for an organized attack.
+An attacker will be able to modify packets, advertise false routes, man in the middle a connection, flood the network with fake nodes, or control some fraction of the network. Lets assume less than 50\% for an organized attack.
 
 Of course multiple attackers performing some combination of these is possible.  
 
 \section{Security Properties}
 
-Integrity checking for all packets, encryption for data packets, persistent identity and strong encryption for adjacent nodes, session unique identity for all other nodes (we don't care if a node across the network is the same between sessions, we do care about adjacent nodes being the same). 
+Hocnet must ensure that communication with any given node is valid, that communication itself does not open the system up to infection or compromise, and finally that routes are within some reasonable tolerance of the correct route despite possible attackers. 
 
-Since routing metrics have a useful life on the order of minutes the security only needs to last that long. Making weaker methods more feasible. Payload encryption just needs to be infeasible to decrypt all traffic from a node long term. We need a very secure channel to adjacent nodes only for billing discussions. 
-
-The network is flooded with announce messages every second from every node, it needs to be feasible to verify all of these as well as to generate many since each node must update the routing metric on forwarding. 
-
-In an ideal world there would be some way to ensure that routing cost monotonically increases from the announcing node and transmission quality monotonically decreases. But that's not required.
+Exceptions include nodes with only a single connection into the wider mesh, where it is impossible to prevent a MITM and other situations where a single bad actor controls very high value routes. In a well connected network all attacks should be solvable. 
 
 \section{Performance Constraints}
 
